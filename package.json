@@ -13,7 +13,7 @@
                 "cortex-debug.pathsRelativeToHome": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Should the paths (specifically armToolchainPath and openocdPath) be interpreted as beginning in the users home directory."
+                    "description": "Should the paths (specifically armToolchainPath, openocdPath, and qemu's serverpath) be interpreted as beginning in the users home directory."
                 },
                 "cortex-debug.armToolchainPath": {
                     "type": [

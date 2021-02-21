@@ -1,6 +1,7 @@
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { GDBServerController, ConfigurationArguments, createPortName } from './common';
 import * as os from 'os';
+import * as path from 'path';
 import { EventEmitter } from 'events';
 
 const commandExistsSync = require('command-exists').sync;
@@ -67,8 +68,15 @@ export class QEMUServerController extends EventEmitter implements GDBServerContr
     }
 
     public serverExecutable() {
-        if (this.args.serverpath) { return this.args.serverpath; }
-        else {
+        if (this.args.serverpath) {
+            let serverpath = this.args.serverpath;
+
+            if (this.args.pathsRelativeToHome) {
+                serverpath = path.normalize(path.join(os.homedir(), serverpath));
+            }
+
+            return serverpath;
+        } else {
             for (const name in EXECUTABLE_NAMES) {
                 if (commandExistsSync(name)) { return name; }
             }
