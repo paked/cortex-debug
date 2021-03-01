@@ -104,7 +104,7 @@ export class GDBDebugSession extends DebugSession {
     protected activeEditorPath: string = null;
     // currentThreadId is the currently selected thread or where execution has stopped. It not very
     // meaningful since the current thread id in gdb can change in many ways (when you use a --thread
-    // option on certain commands) 
+    // option on certain commands)
     protected currentThreadId: number = 0;
     protected activeThreadIds = new Set<number>();      // Used for consistency check
 
@@ -213,7 +213,11 @@ export class GDBDebugSession extends DebugSession {
 
     private normalizeArguments(args: ConfigurationArguments): ConfigurationArguments {
         args.graphConfig = args.graphConfig || [];
-        
+
+        if (args.pathsRelativeToHome && !path.isAbsolute(args.toolchainPath)) {
+            args.toolchainPath = path.normalize(path.join(os.homedir(), args.toolchainPath))
+        }
+
         if (args.executable && !path.isAbsolute(args.executable)) {
             args.executable = path.normalize(path.join(args.cwd, args.executable));
         }
@@ -243,12 +247,12 @@ export class GDBDebugSession extends DebugSession {
             );
             return;
         }
-        
+
         const ControllerClass = SERVER_TYPE_MAP[this.args.servertype];
         this.serverController = new ControllerClass();
         this.serverController.setArguments(this.args);
         this.serverController.on('event', this.serverControllerEvent.bind(this));
-        
+
         this.quit = false;
         this.attached = false;
         this.started = false;
@@ -272,10 +276,6 @@ export class GDBDebugSession extends DebugSession {
             }
             if (this.args.gdbPath) {
                 gdbExePath = this.args.gdbPath;
-            }
-
-            if (this.args.pathsRelativeToHome) {
-                gdbExePath = path.normalize(path.join(os.homedir(), gdbExePath));
             }
 
             // Check to see if gdb exists.
@@ -352,7 +352,7 @@ export class GDBDebugSession extends DebugSession {
                 }
 
                 this.serverController.serverLaunchCompleted();
-                
+
                 let gdbargs = ['-q', '--interpreter=mi2'];
                 gdbargs = gdbargs.concat(this.args.debuggerArgs || []);
 
@@ -368,7 +368,7 @@ export class GDBDebugSession extends DebugSession {
                     commands.push('interpreter-exec console "set print asm-demangle on"');
                 }
                 commands.push(...this.serverController.initCommands());
-                
+
                 if (attach) {
                     commands.push(...this.args.preAttachCommands.map(COMMAND_MAP));
                     const attachCommands = this.args.overrideAttachCommands != null ?
@@ -385,7 +385,7 @@ export class GDBDebugSession extends DebugSession {
                     commands.push(...this.args.postLaunchCommands.map(COMMAND_MAP));
                     commands.push(...this.serverController.swoCommands());
                 }
-                
+
                 this.serverController.debuggerLaunchStarted();
                 this.miDebugger.once('debug-ready', () => {
                     this.debugReady = true;
@@ -469,7 +469,7 @@ export class GDBDebugSession extends DebugSession {
                 ));
                 this.sendErrorResponse(response, 103, `Failed to launch ${this.serverController.name} GDB Server: ${error.toString()}`);
             });
-            
+
         }, (err) => {
             this.sendEvent(new TelemetryEvent('Error', 'Launching Server', `Failed to find open ports: ${err.toString()}`));
             this.sendErrorResponse(response, 103, `Failed to find open ports: ${err.toString()}`);
@@ -917,7 +917,7 @@ export class GDBDebugSession extends DebugSession {
             this.handleMsg('stdout', `**** Paused Thread: not found. Using ID ${this.stoppedThreadId}. Not good\n`);
         }
     }
-    
+
     protected handleBreakpoint(info: MINode) {
         this.stopped = true;
         this.stoppedReason = 'breakpoint';
@@ -1096,7 +1096,7 @@ export class GDBDebugSession extends DebugSession {
             args.breakpoints.forEach((brk) => {
                 all.push(this.miDebugger.addBreakPoint({ raw: brk.name, condition: brk.condition, countCondition: brk.hitCondition }));
             });
-            
+
             try {
                 const breakpoints = await Promise.all(all);
                 const finalBrks = [];
@@ -1134,12 +1134,12 @@ export class GDBDebugSession extends DebugSession {
         const createBreakpoints = async (shouldContinue) => {
             this.debugReady = true;
             const currentBreakpoints = (this.breakpointMap.get(args.source.path) || []).map((bp) => bp.number);
-            
+
             try {
                 this.disableSendStoppedEvents = false;
                 await this.miDebugger.removeBreakpoints(currentBreakpoints);
                 this.breakpointMap.set(args.source.path, []);
-                
+
                 const all: Array<Promise<Breakpoint>> = [];
                 const sourcepath = decodeURIComponent(args.source.path);
 
@@ -1160,7 +1160,7 @@ export class GDBDebugSession extends DebugSession {
                     }
 
                     const symbol: SymbolInformation = await this.getDisassemblyForFunction(func, file);
-                    
+
                     if (symbol) {
                         args.breakpoints.forEach((brk) => {
                             if (brk.line <= symbol.instructions.length) {
@@ -1348,7 +1348,7 @@ export class GDBDebugSession extends DebugSession {
                         if (url === this.activeEditorPath) { disassemble = true; }
                     }
                 }
-                
+
                 try {
                     if (disassemble) {
                         const symbolInfo = await this.getDisassemblyForFunction(element.function, element.fileName);
@@ -1365,7 +1365,7 @@ export class GDBDebugSession extends DebugSession {
                             else {
                                 fname = `${symbolInfo.name}.cdasm`;
                             }
-                            
+
                             const url = 'disassembly:///' + fname;
                             ret.push(new StackFrame(stackId, `${element.function}@${element.address}`, new Source(fname, url), line, 0));
                         }
@@ -2023,7 +2023,7 @@ export class GDBDebugSession extends DebugSession {
                         throw err;
                     }
                 }
-                
+
                 this.sendResponse(response);
             }
             catch (err) {
