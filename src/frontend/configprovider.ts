@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as os from 'os';
 import { STLinkServerController } from './../stlink';
+import * as path from "path";
 
 const OPENOCD_VALID_RTOS: string[] = ['eCos', 'ThreadX', 'FreeRTOS', 'ChibiOS', 'embKernel', 'mqx', 'uCOS-III', 'auto'];
 const JLINK_VALID_RTOS: string[] = ['FreeRTOS', 'embOS', 'ChibiOS'];
@@ -25,7 +26,7 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
             config.debuggerArgs = config.debugger_args;
         }
         if (!config.debuggerArgs) { config.debuggerArgs = []; }
-        
+
         const type = config.servertype;
 
         let validationResponse: string = null;
@@ -102,15 +103,22 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
            config.armToolchainPath = STLinkServerController.getArmToolchainPath();
         }
 
-        if (config.armToolchainPath) { config.toolchainPath = config.armToolchainPath; }
+        if (config.armToolchainPath) {
+            if (config.pathsRelativeToHome && !path.isAbsolute(config.armToolchainPath)) {
+                config.armToolchainPath = path.normalize(path.join(os.homedir(), config.armToolchainPath))
+            }
+
+            config.toolchainPath = config.armToolchainPath;
+        }
+
         if (!config.toolchainPath) {
             config.toolchainPath = configuration.armToolchainPath;
         }
-        
+
         if (!config.toolchainPrefix) {
             config.toolchainPrefix = configuration.armToolchainPrefix || 'arm-none-eabi';
         }
-        
+
         if (!config.gdbPath) {
             config.gdbPath = configuration.gdbPath;
         }
@@ -126,12 +134,12 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
 
         config.flattenAnonymous = configuration.flattenAnonymous;
         config.registerUseNaturalFormat = configuration.registerUseNaturalFormat;
-        
+
         if (validationResponse) {
             vscode.window.showErrorMessage(validationResponse);
             return undefined;
         }
-        
+
         return config;
     }
 
@@ -150,7 +158,7 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
         if (config.rtos) {
             return 'RTOS support is not available when using QEMU';
         }
-        
+
         return null;
     }
 
@@ -205,7 +213,7 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
         if (!config.searchDir || config.searchDir.length === 0) {
             config.searchDir = [];
         }
-        
+
         return null;
     }
 
@@ -282,7 +290,7 @@ export class CortexDebugConfigurationProvider implements vscode.DebugConfigurati
         if (!config.powerOverBMP) { config.powerOverBMP = 'lastState'; }
         if (!config.interface) { config.interface = 'swd'; }
         if (!config.targetId) { config.targetId = 1; }
-        
+
         if (config.rtos) {
             return 'The Black Magic Probe GDB Server does not have support for the rtos option.';
         }
